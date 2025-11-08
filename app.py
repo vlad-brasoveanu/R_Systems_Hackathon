@@ -1,41 +1,70 @@
+import os
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
-from flask import Flask, request, jsonify
-import sqlite3
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from supabase import create_client, Client, ClientOptions  # <-- MODIFICARE 1: Importăm ClientOptions
+import httpx  # <-- MODIFICARE 2: Importăm httpx
 import io
 import json
-from flask import Flask, request, jsonify
-from flask_cors import CORS  # <-- Importă CORS
-from supabase import create_client, Client
-import io
+
+# --- CONFIGUREAZĂ AICI PENTRU SUPABASE ---
+SUPABASE_URL = "https://[URL-UL-PROIECTULUI-TAU].supabase.co"
+SUPABASE_KEY = "[CHEIA-TA-SERVICE-ROLE]"
+# ------------------------------------
+
+# --- MODIFICARE 3: SOLUȚIA PENTRU BUG-UL IPv6 ---
+# Creăm un client httpx personalizat care preferă adresele IPv4
+# "local_address="127.0.0.1"" forțează legarea la interfața IPv4 locală
+custom_httpx_client = httpx.Client(transport=httpx.HTTPTransport(local_address="127.0.0.1"))
+# Creăm opțiunile clientului Supabase
+supabase_options = ClientOptions(httpx_client=custom_httpx_client)
+# ------------------------------------
 
 
-# --- Setup Aplicație ---
+# --- Inițializare Conexiuni ---
+try:
+    # Injectăm opțiunile personalizate în clientul Supabase
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY, options=supabase_options)
+    print("Conectat la Supabase cu succes (folosind client IPv4 personalizat).")
+except Exception as e:
+    print(f"Eroare FATALĂ la conectarea cu Supabase: {e}")
+    print("Verifică URL-ul și Cheia API în app.py")
+    exit()
+
 app = Flask(__name__)
+# Permitem cereri de la frontend-ul web (necesar pentru dezvoltare locală)
 CORS(app)
 
-# --- Setup Model ---
-# Trebuie să RE-CREĂM arhitectura modelului înainte de a încărca parametrii
-# Asigură-te că folosești aceleași clase ca în train.py
-CLASS_NAMES = ['humans', 'robots']  # ATENȚIE: Ordinea trebuie să fie corectă!
+# --- Încărcare Model ---
+# Asigură-te că numele claselor sunt în ordinea corectă (alfabetică, cum le încarcă ImageFolder)
+CLASS_NAMES = ['humans', 'robots']
 MODEL_PATH = 'robot_human_classifier.pth'
 
-# 1. Inițiază modelul (la fel ca în train.py)
-model = models.resnet18()  # Nu avem nevoie de 'weights' aici
+# 1. Re-creăm arhitectura modelului (ResNet-18)
+model = models.resnet18()
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(CLASS_NAMES))
 
-# 2. Încarcă parametrii salvați
-# Folosim map_location pentru a ne asigura că rulează pe CPU dacă e necesar
-model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
-model.eval()  # Foarte important: setează modelul în modul de evaluare!
+# 2. Încărcăm parametrii antrenați
+try:
+    # Încărcăm modelul pe CPU, deoarece Flask este pentru inferență, nu antrenare
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
+except FileNotFoundError:
+    print(f"Eroare FATALĂ: Fișierul model '{MODEL_PATH}' nu a fost găsit.")
+    print("Asigură-te că ai rulat 'python train.py' mai întâi pentru a-l genera.")
+    exit()
 
-# 3. Definește transformările pentru o singură imagine (la fel ca 'val' în train.py)
+model.eval()  # Foarte important: setează modelul în modul de evaluare!
+print(f"Modelul '{MODEL_PATH}' a fost încărcat cu succes.")
+
+# 3. Defineste transformările pentru o singură imagine (la fel ca la validare)
 preprocess = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
+    transforms.Lambda(lambda img: img.convert('RGB')),  # Asigurăm 3 canale
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
@@ -45,8 +74,8 @@ preprocess = transforms.Compose([
 
 def transform_image(image_bytes):
     """Transformă octeții imaginii într-un tensor Pytorch."""
-    image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-    return preprocess(image).unsqueeze(0)  # Adaugă o dimensiune pentru batch (batch_size=1)
+    image = Image.open(io.BytesIO(image_bytes))
+    return preprocess(image).unsqueeze(0)  # Adaugă o dimensiune pentru batch
 
 
 def get_prediction(tensor):
@@ -66,21 +95,33 @@ def get_prediction(tensor):
 
 
 def save_to_db(filename, predicted_class, confidence):
-    """Salvează rezultatul în baza de date SQLite."""
-    conn = sqlite3.connect('predictions.db')
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO predictions (filename, predicted_class, confidence) VALUES (?, ?, ?)",
-        (filename, predicted_class, confidence)
-    )
-    conn.commit()
-    conn.close()
+    """Salvează rezultatul în tabela 'predictions' din SupABASE."""
+    try:
+        data_to_insert = {
+            'filename': filename,
+            'predicted_class': predicted_class,
+            'confidence': confidence
+        }
+        # Inserăm în tabela 'predictions' (pe care ai creat-o în Supabase)
+        response = supabase.table('predictions').insert(data_to_insert).execute()
+
+    except Exception as e:
+        print(f"Eroare la salvarea în Supabase: {e}")
+        # Nu oprim aplicația, doar logăm eroarea și mergem mai departe
 
 
-# --- Endpoint API ---
+# --- ENDPOINTS (RUTELE SERVERULUI) ---
+
+@app.route('/')
+def home():
+    """Servește pagina web principală (index.html)"""
+    # Trimite fișierul 'index.html' din folderul curent ('.')
+    return send_from_directory('.', 'index.html')
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    """Endpoint-ul API care primește imaginea și returnează predicția."""
     if 'file' not in request.files:
         return jsonify({'error': 'Niciun fișier încărcat'}), 400
 
@@ -96,10 +137,10 @@ def predict():
 
         predicted_class, confidence = get_prediction(tensor)
 
-        # Salvare în baza de date
+        # Salvează rezultatul în Supabase
         save_to_db(filename, predicted_class, confidence)
 
-        # Returnează răspunsul
+        # Returnează răspunsul JSON către frontend
         return jsonify({
             'filename': filename,
             'predicted_class': predicted_class,
@@ -107,8 +148,14 @@ def predict():
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Gestionează și erorile de procesare (ex: fișier corupt)
+        print(f"Eroare la procesarea imaginii: {e}")
+        return jsonify({'error': f"Eroare la procesarea imaginii: {str(e)}"}), 500
 
 
+# --- Pornirea serverului ---
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # MODIFICARE: Am revenit la '0.0.0.0' pentru a fi accesibil de 'ngrok'
+    # Am păstrat portul 5001 pentru a evita conflictul cu AirPlay
+    # Problema IPv6 ar trebui rezolvată acum prin instalarea 'requests'
+    app.run(debug=True, port=5001, host='0.0.0.0')

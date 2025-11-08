@@ -44,6 +44,7 @@
         #preview {
             margin-top: 1.5rem;
             max-width: 100%;
+            max-height: 300px;
             border-radius: 8px;
             display: none; /* Ascuns inițial */
         }
@@ -55,6 +56,7 @@
         }
         #result.robot { color: #d9534f; }
         #result.human { color: #5cb85c; }
+        #result.error { color: #ff9500; }
 
         .loader {
             border: 4px solid #f3f3f3;
@@ -78,13 +80,17 @@
         <h1>Este Robot sau Om?</h1>
         <p>Încarcă o imagine pentru a afla.</p>
 
+        <!-- Eticheta care acționează ca un buton de upload -->
         <label for="file-upload" class="file-label">
             🤖 Alegeti o Imagine 🧑
         </label>
-        <input id="file-upload" type="file" accept="image/*">
+        <!-- Inputul de fișier este ascuns, dar controlat de etichetă -->
+        <input id="file-upload" type="file" accept="image/jpeg, image/png, image/webp">
 
+        <!-- Previzualizare imagine -->
         <img id="preview" src="" alt="Previzualizare Imagine">
 
+        <!-- Zona de rezultate -->
         <div id="result"></div>
         <div class="loader" id="loader"></div>
     </div>
@@ -95,8 +101,10 @@
         const resultDiv = document.getElementById('result');
         const loader = document.getElementById('loader');
 
-        // URL-ul API-ului Flask (pe care rulează app.py)
-        const API_URL = 'http://127.0.0.1:5000/predict';
+        // --- AICI ESTE MODIFICAREA ---
+        // Am eliminat "http://127.0.0.1:5000"
+        // Acum browser-ul va trimite cererea la domeniul curent (ex: /predict)
+        const API_URL = '/predict';
 
         fileUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
@@ -124,19 +132,14 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+            .then(response => response.json()) // Presupunem că serverul returnează mereu JSON
             .then(data => {
                 // 5. Afișează rezultatul
                 loader.style.display = 'none';
 
                 if (data.error) {
                     resultDiv.textContent = `Eroare: ${data.error}`;
-                    resultDiv.className = 'robot'; // Clasa de eroare
+                    resultDiv.className = 'error';
                 } else {
                     const clasa = data.predicted_class;
                     const confidence = (data.confidence * 100).toFixed(1);
@@ -154,8 +157,8 @@
                 // 6. Gestionează erorile (ex: serverul nu e pornit)
                 loader.style.display = 'none';
                 resultDiv.textContent = 'Eroare de conexiune cu serverul.';
-                resultDiv.className = 'robot';
-                console.error('Error:', error);
+                resultDiv.className = 'error';
+                console.error('Fetch Error:', error);
             });
         });
     </script>
