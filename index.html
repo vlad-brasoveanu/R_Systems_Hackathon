@@ -4,93 +4,173 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robot sau Om?</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #007aff;
+            --primary-hover: #005bb5;
+            --background-color: #f0f2f5;
+            --card-background: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+            --shadow-light: 0 4px 8px rgba(0,0,0,0.05);
+            --shadow-medium: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: grid;
-            place-items: center;
-            min-height: 90vh;
-            background: #f4f7f6;
-            color: #333;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
+
         .container {
-            width: 90%;
-            max-width: 500px;
-            background: #fff;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 550px;
+            background: var(--card-background);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-medium);
             text-align: center;
+            border: 1px solid var(--border-color);
         }
+
         h1 {
+            font-size: 2.2rem;
             margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
         }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            color: #666;
+        }
+
         input[type="file"] {
             display: none;
         }
+
         .file-label {
-            display: inline-block;
-            padding: 12px 20px;
-            background: #007aff;
+            display: inline-flex; /* Use flex for icon and text alignment */
+            align-items: center;
+            gap: 10px; /* Space between icon and text */
+            padding: 14px 25px;
+            background: var(--primary-color);
             color: #fff;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            font-weight: 500;
-            transition: background 0.2s;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: background 0.2s ease, transform 0.1s ease;
+            margin-bottom: 1.5rem;
+            user-select: none; /* Prevent text selection on click */
         }
+
         .file-label:hover {
-            background: #005bb5;
+            background: var(--primary-hover);
+            transform: translateY(-2px);
         }
+
+        .file-label:active {
+            transform: translateY(0);
+        }
+
+        .image-display {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
         #preview {
-            margin-top: 1.5rem;
             max-width: 100%;
             max-height: 300px;
-            border-radius: 8px;
+            border-radius: 10px;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            display: none; /* Ascuns inițial */
+            object-fit: contain; /* Ensure image fits within bounds */
+        }
+
+        #timestamp {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 0.5rem;
             display: none; /* Ascuns inițial */
         }
+
         #result {
-            margin-top: 1.5rem;
-            font-size: 1.5rem;
-            font-weight: 600;
-            height: 30px; /* Previne saltul de layout */
+            margin-top: 2rem;
+            font-size: 1.8rem;
+            font-weight: 700;
+            min-height: 40px; /* Prevents layout shift */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         #result.robot { color: #d9534f; }
         #result.human { color: #5cb85c; }
         #result.error { color: #ff9500; }
 
         .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #007aff;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
+            width: 30px;
+            height: 30px;
             animation: spin 1s linear infinite;
-            margin: 1.5rem auto 0 auto;
+            margin: 2rem auto 0 auto;
             display: none; /* Ascuns inițial */
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .file-label {
+                font-size: 1rem;
+                padding: 12px 20px;
+            }
+            #result {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Este Robot sau Om?</h1>
-        <p>Încarcă o imagine pentru a afla.</p>
+        <h1>Robot sau Om?</h1>
+        <p>Încarcă o imagine pentru a afla dacă inteligența artificială o clasifică drept robot sau om.</p>
 
-        <!-- Eticheta care acționează ca un buton de upload -->
         <label for="file-upload" class="file-label">
-            🤖 Alegeti o Imagine 🧑
+            <span role="img" aria-label="robot-human">🤖🧑</span> Alege o Imagine
         </label>
-        <!-- Inputul de fișier este ascuns, dar controlat de etichetă -->
         <input id="file-upload" type="file" accept="image/jpeg, image/png, image/webp">
 
-        <!-- Previzualizare imagine -->
-        <img id="preview" src="" alt="Previzualizare Imagine">
+        <div class="image-display">
+            <img id="preview" src="" alt="Previzualizare Imagine">
+            <div id="timestamp"></div>
+        </div>
 
-        <!-- Zona de rezultate -->
         <div id="result"></div>
         <div class="loader" id="loader"></div>
     </div>
@@ -98,13 +178,11 @@
     <script>
         const fileUpload = document.getElementById('file-upload');
         const preview = document.getElementById('preview');
+        const timestampDiv = document.getElementById('timestamp');
         const resultDiv = document.getElementById('result');
         const loader = document.getElementById('loader');
 
-        // --- AICI ESTE MODIFICAREA ---
-        // Am eliminat "http://127.0.0.1:5000"
-        // Acum browser-ul va trimite cererea la domeniul curent (ex: /predict)
-        const API_URL = '/predict';
+        const API_URL = '/predict'; // Cale relativă pentru compatibilitate cu ngrok
 
         fileUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
@@ -115,6 +193,10 @@
             reader.onload = (e) => {
                 preview.src = e.target.result;
                 preview.style.display = 'block';
+                // Afișează timestamp-ul
+                const now = new Date();
+                timestampDiv.textContent = `Încărcată la: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                timestampDiv.style.display = 'block';
             };
             reader.readAsDataURL(file);
 
@@ -122,6 +204,7 @@
             resultDiv.textContent = '';
             resultDiv.className = '';
             loader.style.display = 'block';
+            timestampDiv.style.display = 'none'; // Ascunde timestamp-ul cât timp se procesează
 
             // 3. Pregătește datele pentru trimitere
             const formData = new FormData();
@@ -132,10 +215,11 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json()) // Presupunem că serverul returnează mereu JSON
+            .then(response => response.json())
             .then(data => {
                 // 5. Afișează rezultatul
                 loader.style.display = 'none';
+                timestampDiv.style.display = 'block'; // Reafișează timestamp-ul
 
                 if (data.error) {
                     resultDiv.textContent = `Eroare: ${data.error}`;
@@ -156,6 +240,7 @@
             .catch(error => {
                 // 6. Gestionează erorile (ex: serverul nu e pornit)
                 loader.style.display = 'none';
+                timestampDiv.style.display = 'none'; // Ascunde timestamp-ul la eroare
                 resultDiv.textContent = 'Eroare de conexiune cu serverul.';
                 resultDiv.className = 'error';
                 console.error('Fetch Error:', error);
