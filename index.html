@@ -9,6 +9,7 @@
         :root {
             --human-color: #28a745; /* Verde */
             --robot-color: #007aff; /* Albastru */
+            --others-color: #ff9500; /* Portocaliu pentru 'Others' */
             --robot-hover: #005bb5; /* Albastru mai închis */
             --background-color: #f4f7f6;
             --card-background: #ffffff;
@@ -205,7 +206,7 @@
             font-size: 0.9rem;
             text-shadow: 0 1px 1px rgba(0,0,0,0.2);
         }
-        #bar-human, #bar-robot {
+        #bar-human, #bar-robot, #bar-others {
             height: 100%;
             transition: width 0.5s ease-out;
             text-align: center;
@@ -214,6 +215,8 @@
         }
         #bar-human { background: var(--human-color); }
         #bar-robot { background: var(--robot-color); }
+        #bar-others { background: var(--others-color); } /* NOU: Pentru clasa Others */
+
 
         .final-result-box {
             display: flex;
@@ -230,9 +233,10 @@
         }
         #result-text.robot { color: var(--robot-color); }
         #result-text.human { color: var(--human-color); }
+        #result-text.others { color: var(--others-color); } /* NOU: Culoare pentru Others */
         #result-text.error { color: #ff9500; }
 
-        /* NOU: Stil pentru mesajul explicativ */
+        /* NOU: Stil pentru mesajul explicativ (păstrat pentru mesaje de eroare/lipsă) */
         #confidence-explanation {
             display: none; /* Ascuns inițial */
             font-size: 0.95rem;
@@ -328,6 +332,7 @@
         }
         .history-result.robot { color: var(--robot-color); }
         .history-result.human { color: var(--human-color); }
+        .history-result.others { color: var(--others-color); } /* NOU: Culoare istoric Others */
 
         .history-filename {
             font-size: 0.85rem;
@@ -418,6 +423,7 @@
                     <div id="confidence-bar">
                         <div id="bar-human"></div>
                         <div id="bar-robot"></div>
+                        <div id="bar-others"></div> <!-- NOU: Bară pentru Others -->
                     </div>
                 </div>
 
@@ -465,6 +471,7 @@
         const copyTextarea = document.getElementById('copy-textarea');
         const barHuman = document.getElementById('bar-human');
         const barRobot = document.getElementById('bar-robot');
+        const barOthers = document.getElementById('bar-others'); // NOU: Bară Others
         const heatmapBox = document.getElementById('heatmap-box');
         const heatmapImage = document.getElementById('heatmap-image');
         const historyList = document.getElementById('history-list');
@@ -514,7 +521,6 @@
             urlInput.value = '';
             urlInput.disabled = false;
             urlSubmitBtn.disabled = false;
-            // Aici era problema: setăm valoarea la null pentru a goli fișierul selectat
             fileUpload.value = null;
             fileUpload.disabled = false;
             dropZone.style.pointerEvents = 'auto';
@@ -556,64 +562,82 @@
                 hideLoader();
                 resetBtn.style.display = 'block';
 
-                const THRESHOLD = 0.75; // Prag de 75%
                 const confidence = data.confidence;
                 const clasa = data.predicted_class;
+                const confidencePercent = (confidence * 100).toFixed(1);
 
-                const humanConf = data.predicted_class === 'humans' ? data.confidence : (1 - data.confidence);
-                const robotConf = 1 - humanConf;
+                // 1. Setează TEXTUL REZULTATULUI
+                let emoji = '❓';
+                nume1 = '';
+                if (clasa === 'robots') {
+                    emoji = '🤖';
+                    resultText.className = 'Robot';
+                } else if (clasa === 'humans') {
+                    emoji = '🧑';
+                    resultText.className = 'Om';
+                } else if (clasa === 'others') {
+                    emoji = '🖼️';
+                    resultText.className = 'Altceva';
+                }
 
-                // 1. Setează BARA DE ÎNCREDERE (o afișăm mereu)
-                barHuman.style.width = `${humanConf * 100}%`;
-                barHuman.textContent = humanConf > 0.15 ? `Om ${(humanConf * 100).toFixed(1)}%` : '';
-                barRobot.style.width = `${robotConf * 100}%`;
-                barRobot.textContent = robotConf > 0.15 ? `Robot ${(robotConf * 100).toFixed(1)}%` : '';
+                resultText.textContent = `${emoji} ${resultText.className} (${confidencePercent}%)`;
+                textToCopy = `${clasa.toUpperCase()} (${confidencePercent}%)`;
 
-                // Ascunde elementele specifice (heatmap, explicație) înainte de a decide
-                heatmapBox.style.display = 'none';
-                confidenceExplanation.style.display = 'none';
+                // 2. Setează BARA DE ÎNCREDERE (logica e simplificată la 3 clase)
+                // Presupunem că modelul returnează cea mai mare confidență (confidence)
+                // și o setăm pe bara clasei câștigătoare, restul la 0
 
-                // 2. Setează TEXTUL REZULTATULUI (bazat pe prag)
-                if (confidence < THRESHOLD) {
-                    // --- CAZUL: Modelul este confuz ---
-                    resultText.textContent = `❓ Clasificare Neclară`;
-                    resultText.className = 'error'; // Folosim clasa de eroare (portocaliu)
-                    textToCopy = `Clasificare Neclară (sub ${THRESHOLD*100}%)`;
+                // Resetăm toate barele la 0%
+                barHuman.style.width = '0%';
+                barRobot.style.width = '0%';
+                barOthers.style.width = '0%';
+                barHuman.textContent = '';
+                barRobot.textContent = '';
+                barOthers.textContent = '';
 
-                    // Afișează explicația
-                    confidenceExplanation.textContent = "Modelul este nehotărât (încredere sub 75%). Imaginea nu pare a fi nici om, nici robot, sau conține elemente din ambele clase.";
-                    confidenceExplanation.style.display = 'block';
+                let targetBar, targetBarName;
 
-                    // Nu afișăm harta termică
+                if (clasa === 'humans') {
+                    targetBar = barHuman;
+                    targetBarName = 'Om';
+                } else if (clasa === 'robots') {
+                    targetBar = barRobot;
+                    targetBarName = 'Robot';
+                } else if (clasa === 'others') {
+                    targetBar = barOthers;
+                    targetBarName = 'Altceva';
+                }
 
-                } else {
-                    // --- CAZUL: Modelul este sigur ---
-                    const confidencePercent = (confidence * 100).toFixed(1);
-                    if (clasa === 'robots') {
-                        resultText.textContent = `🤖 Robot (${confidencePercent}%)`;
-                        resultText.className = 'robot';
-                        textToCopy = `Robot (${confidencePercent}%)`;
-                    } else if (clasa === 'humans') {
-                        resultText.textContent = `🧑 Om (${confidencePercent}%)`;
-                        resultText.className = 'human';
-                        textToCopy = `Om (${confidencePercent}%)`;
-                    }
-
-                    // Afișează harta termică
-                    if (data.heatmap_image) {
-                        heatmapImage.src = data.heatmap_image;
-                        heatmapBox.style.display = 'block';
+                if (targetBar) {
+                    targetBar.style.width = `${confidencePercent}%`;
+                    if (confidence > 0.15) {
+                        targetBar.textContent = `${targetBarName} ${confidencePercent}%`;
                     }
                 }
 
-                // 3. Afișează butonul de copiere
+                // 3. Setează Heatmap (afișat doar dacă NU este clasa 'others')
+                if (data.heatmap_image && clasa !== 'others') {
+                    heatmapImage.src = data.heatmap_image;
+                    heatmapBox.style.display = 'block';
+                    confidenceExplanation.style.display = 'none';
+                } else {
+                    heatmapBox.style.display = 'none';
+                    if (clasa === 'others') {
+                        confidenceExplanation.textContent = "Modelul a identificat imaginea ca fiind din clasa 'Altceva' (nici om, nici robot). Analiza vizuală nu este necesară.";
+                        confidenceExplanation.style.display = 'block';
+                    } else {
+                        confidenceExplanation.style.display = 'none';
+                    }
+                }
+
+                // 4. Afișează butonul de copiere
                 copyBtn.style.display = 'inline-flex';
 
-                // 4. Afișează timestamp-ul
+                // 5. Afișează timestamp-ul
                 const now = new Date();
                 timestampDiv.textContent = `Analizat la: ${now.toLocaleDateString('ro-RO')} ${now.toLocaleTimeString('ro-RO')}`;
 
-                // 5. Reîncarcă istoricul
+                // 6. Reîncarcă istoricul
                 fetchHistory();
                 // Reactivăm UI-ul pentru o nouă încărcare
                 fileUpload.disabled = false;
@@ -621,6 +645,7 @@
                 urlSubmitBtn.disabled = false;
                 dropZone.style.pointerEvents = 'auto';
                 dropZone.style.opacity = '1';
+
 
             } catch (e) {
                 console.error("!!! EROARE CRITICĂ ÎN 'showResults' !!!", e);
@@ -715,14 +740,32 @@
                     data.forEach(item => {
                         if (item.image_url) {
                             const li = document.createElement('li');
-                            const isRobot = item.predicted_class === 'robots';
+                            const clasa = item.predicted_class;
                             const confidence = (item.confidence * 100).toFixed(1);
+
+                            let emoji = '❓';
+                            let className = '';
+                            let displayName = clasa.toUpperCase();
+
+                            if (clasa === 'robots') {
+                                emoji = '🤖';
+                                className = 'robot';
+                                displayName = 'Robot';
+                            } else if (clasa === 'humans') {
+                                emoji = '🧑';
+                                className = 'human';
+                                displayName = 'Om';
+                            } else if (clasa === 'others') {
+                                emoji = '🖼️';
+                                className = 'others';
+                                displayName = 'Altceva';
+                            }
 
                             li.innerHTML = `
                                 <img class="history-image" src="${item.image_url}" alt="${item.filename}" loading="lazy">
                                 <div class="history-details">
-                                    <span class="history-result ${isRobot ? 'robot' : 'human'}">
-                                        ${isRobot ? '🤖' : '🧑'} ${isRobot ? 'Robot' : 'Om'} (${confidence}%)
+                                    <span class="history-result ${className}">
+                                        ${emoji} ${displayName} (${confidence}%)
                                     </span>
                                     <span class="history-filename">${item.filename}</span>
                                 </div>

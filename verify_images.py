@@ -3,7 +3,7 @@ from PIL import Image
 
 # Definește folderul principal al setului de date
 dataset_root = 'dataset'
-subfolders = ['train/humans', 'train/robots', 'val/humans', 'val/robots']
+subfolders = ['train/humans', 'train/robots', 'val/humans', 'val/robots', 'val/others', 'val/others']
 
 corrupted_count = 0
 

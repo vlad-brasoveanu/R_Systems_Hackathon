@@ -24,7 +24,7 @@ def main():
     # --- Configurare ---
     DATA_DIR = 'dataset'
     BATCH_SIZE = 32
-    NUM_EPOCHS = 10  # Poți crește numărul dacă ai timp
+    NUM_EPOCHS = 20  # MODIFICAT: Mărim numărul de epoci pentru performanță
 
     # --- Încărcare Date ---
     try:
@@ -34,6 +34,7 @@ def main():
         print("Asigură-te că ai creat structura 'dataset/train/...' și 'dataset/val/...'")
         return
 
+    # VERIFICARE: Acum class_names ar trebui să fie ['humans', 'others', 'robots']
     print(f"Clase găsite: {class_names}")
 
     # --- Definire Model (Transfer Learning) ---
@@ -43,13 +44,15 @@ def main():
         param.requires_grad = False
 
     num_ftrs = model.fc.in_features
+    # MODIFICAT: Acum modelul va avea 3 ieșiri (pentru cele 3 clase)
     model.fc = nn.Linear(num_ftrs, len(class_names))
 
     model = model.to(device)
 
     # --- Definire Antrenare ---
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
+    # MODIFICAT: Trecem la optimizatorul Adam pentru o antrenare mai rapidă și mai bună
+    optimizer = optim.Adam(model.fc.parameters(), lr=0.001)
 
     print("Începe antrenarea...")
 
@@ -116,7 +119,7 @@ def main():
 
         # Salvează statisticile în istoric
         history['train_loss'].append(epoch_loss)
-        history['train_acc'].append(epoch_acc.item())  # .item() pentru a extrage valoarea din tensor
+        history['train_acc'].append(epoch_acc.item())
         history['val_loss'].append(val_epoch_loss)
         history['val_acc'].append(val_epoch_acc.item())
 
@@ -167,4 +170,3 @@ def main():
 # --- "Main guard-ul" pentru a proteja workerii pe macOS ---
 if __name__ == '__main__':
     main()
-

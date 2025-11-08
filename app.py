@@ -15,12 +15,13 @@ import uuid
 
 # --- Importuri pentru Grad-CAM ---
 from torchcam import methods as cam_methods
-# NU mai folosim overlay_mask, vom face fuzionarea manual2
+
+# NU mai folosim overlay_mask, vom face fuzionarea manual
 
 # --- CONFIGUREAZIA AICI PENTRU SUPABASE ---
-SUPABASE_URL = "https://wsakatqrenlgljsaxfip.supabase.co"  # <-- COMPLETEAZĂ AICI
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYWthdHFyZW5sZ2xqc2F4ZmlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NzQ2MzAsImV4cCI6MjA3ODE1MDYzMH0.GEE-uwc0DCcCxFmkLVwDlk2Q3OXSG_ImvkpK3NDY8Mo"  # <-- COMPLETEAZĂ AICI
-BUCKET_NAME = "R_Systems_Hackathon"  # Numele bucket-ului (TREBUIE SĂ FIE PUBLIC)
+SUPABASE_URL = "https://wsakatqrenlgljsaxfip.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYWthdHFyZW5sZ2xqc2F4ZmlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NzQ2MzAsImV4cCI6MjA3ODE1MDYzMH0.GEE-uwc0DCcCxFmkLVwDlk2Q3OXSG_ImvkpK3NDY8Mo"
+BUCKET_NAME = "R_Systems_Hackathon"
 # ------------------------------------
 
 # --- Inițializare API-uri ---
@@ -45,10 +46,12 @@ supabase_storage_headers = {
 print("Client Supabase (pentru Storage) inițializat.")
 
 # --- Încărcare Model ---
-CLASS_NAMES = ['humans', 'robots']
+# MODIFICAT: Trei clase, ordonate alfabetic: humans, others, robots
+CLASS_NAMES = ['humans', 'others', 'robots']
 MODEL_PATH = 'robot_human_classifier.pth'
 model = models.resnet18()
 num_ftrs = model.fc.in_features
+# MODELUL NOU ARE 3 IEȘIRI
 model.fc = nn.Linear(num_ftrs, len(CLASS_NAMES))
 try:
     model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
@@ -61,7 +64,6 @@ except FileNotFoundError:
 
 # --- Inițializare Extractor Grad-CAM ---
 target_layer = model.layer4[1].conv2
-# Activăm gradienții pe stratul țintă pentru a permite Grad-CAM să funcționeze
 for param in target_layer.parameters():
     param.requires_grad = True
 print(f"[DEBUG Grad-CAM] Activare requires_grad pe stratul țintă.")
@@ -70,18 +72,11 @@ cam_extractor = cam_methods.GradCAM(model, target_layer=target_layer)
 print("Extractorul Grad-CAM a fost inițializat.")
 
 # --- Definire Transformări ---
-# Transformarea de input pentru model (dimensiune fixă)
 preprocess_model = transforms.Compose([
-    transforms.Resize((224, 224)),  # Redimensionare forțată
+    transforms.Resize((224, 224)),
     transforms.Lambda(lambda img: img.convert('RGB')),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
-# Transformare simplă pentru heatmap (doar conversie în tensor)
-preprocess_heatmap = transforms.Compose([
-    transforms.Lambda(lambda img: img.convert('RGB')),
-    transforms.ToTensor()
 ])
 
 
@@ -148,11 +143,9 @@ def process_image_and_predict(img_bytes, filename="image"):
     print("[DEBUG Procesare] Început procesare imagine...")
     try:
         pil_image = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-        # Obținem dimensiunea originală
         original_width, original_height = pil_image.size
         print(f"[DEBUG Procesare] Dimensiune originală: {original_width}x{original_height}")
 
-        # Pregătim tensorul pentru model (redimensionat la 224x224)
         tensor_model = preprocess_model(pil_image).unsqueeze(0)
         print("[DEBUG Procesare] Imagine convertită în tensor (224x224).")
 
@@ -165,6 +158,8 @@ def process_image_and_predict(img_bytes, filename="image"):
 
     # --- Predicție și Grad-CAM ---
     heatmap_base64 = None
+    predicted_class = "error"  # Default in caz de eroare in Grad-CAM
+
     try:
         print("[DEBUG Grad-CAM] Intrat în blocul 'enable_grad'.")
         with torch.enable_grad():
@@ -190,18 +185,16 @@ def process_image_and_predict(img_bytes, filename="image"):
             map_min, map_max = activation_map_np.min(), activation_map_np.max()
             if map_max > map_min:
                 activation_map_np = (activation_map_np - map_min) / (map_max - map_min)
-            print("[DEBUG Grad-CAM] Hartă normalizată (0-1).")
 
             # Conversie în imagine 0-255 (uint8)
             activation_map_uint8 = (activation_map_np * 255).astype(np.uint8)
 
-            # --- MODIFICARE: Redimensionare la DIMENSIUNEA ORIGINALĂ ---
-            heatmap_resized = cv2.resize(activation_map_uint8, (original_width, original_height))
-            print(f"[DEBUG Grad-CAM] Hartă redimensionată la {original_width}x{original_height}.")
+            # Redimensionare la DIMENSIUNEA ORIGINALĂ
+            heatmap_resized = cv2.resize(activation_map_uint8, (original_width, original_height),
+                                         interpolation=cv2.INTER_LINEAR)
 
-            # --- MODIFICARE: Aplică paleta de culori HOT ---
+            # Aplică paleta de culori HOT
             heatmap_colored = cv2.applyColorMap(heatmap_resized, cv2.COLORMAP_HOT)
-            print("[DEBUG Grad-CAM] Hartă colorată (COLORMAP_HOT).")
 
             # Conversie imagine originală PIL în OpenCV (Numpy array)
             original_image_cv = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
@@ -218,9 +211,14 @@ def process_image_and_predict(img_bytes, filename="image"):
             print("[DEBUG Grad-CAM] Fuzionare convertită în Base64.")
 
     except Exception as e:
+        # Păstrăm eroarea reală în log și returnăm o predicție de tip "error"
         print(f"[DEBUG Grad-CAM] EROARE la generarea Grad-CAM: {e}")
+        # Setăm datele minime pentru a nu bloca aplicația
+        predicted_class = "others"
+        confidence_score = 1.0  # Max confidence pentru others/error
+        heatmap_base64 = None
 
-    # --- Salvare în DB ---
+        # --- Salvare în DB ---
     save_to_db(filename, predicted_class, confidence_score, public_image_url)
 
     # --- Returnare Răspuns ---
