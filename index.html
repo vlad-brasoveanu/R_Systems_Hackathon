@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot sau Om?</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 90vh;
+            background: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            width: 90%;
+            max-width: 500px;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #007aff;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .file-label:hover {
+            background: #005bb5;
+        }
+        #preview {
+            margin-top: 1.5rem;
+            max-width: 100%;
+            border-radius: 8px;
+            display: none; /* Ascuns inițial */
+        }
+        #result {
+            margin-top: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+            height: 30px; /* Previne saltul de layout */
+        }
+        #result.robot { color: #d9534f; }
+        #result.human { color: #5cb85c; }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007aff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 1.5rem auto 0 auto;
+            display: none; /* Ascuns inițial */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Este Robot sau Om?</h1>
+        <p>Încarcă o imagine pentru a afla.</p>
+
+        <label for="file-upload" class="file-label">
+            🤖 Alegeti o Imagine 🧑
+        </label>
+        <input id="file-upload" type="file" accept="image/*">
+
+        <img id="preview" src="" alt="Previzualizare Imagine">
+
+        <div id="result"></div>
+        <div class="loader" id="loader"></div>
+    </div>
+
+    <script>
+        const fileUpload = document.getElementById('file-upload');
+        const preview = document.getElementById('preview');
+        const resultDiv = document.getElementById('result');
+        const loader = document.getElementById('loader');
+
+        // URL-ul API-ului Flask (pe care rulează app.py)
+        const API_URL = 'http://127.0.0.1:5000/predict';
+
+        fileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 1. Afișează previzualizarea imaginii
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // 2. Resetează starea și arată loader-ul
+            resultDiv.textContent = '';
+            resultDiv.className = '';
+            loader.style.display = 'block';
+
+            // 3. Pregătește datele pentru trimitere
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // 4. Trimite imaginea la API-ul Flask
+            fetch(API_URL, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 5. Afișează rezultatul
+                loader.style.display = 'none';
+
+                if (data.error) {
+                    resultDiv.textContent = `Eroare: ${data.error}`;
+                    resultDiv.className = 'robot'; // Clasa de eroare
+                } else {
+                    const clasa = data.predicted_class;
+                    const confidence = (data.confidence * 100).toFixed(1);
+
+                    if (clasa === 'robots') {
+                        resultDiv.textContent = `🤖 Robot (${confidence}%)`;
+                        resultDiv.className = 'robot';
+                    } else if (clasa === 'humans') {
+                        resultDiv.textContent = `🧑 Om (${confidence}%)`;
+                        resultDiv.className = 'human';
+                    }
+                }
+            })
+            .catch(error => {
+                // 6. Gestionează erorile (ex: serverul nu e pornit)
+                loader.style.display = 'none';
+                resultDiv.textContent = 'Eroare de conexiune cu serverul.';
+                resultDiv.className = 'robot';
+                console.error('Error:', error);
+            });
+        });
+    </script>
+
+</body>
+</html>
