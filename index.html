@@ -3,250 +3,775 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot sau Om?</title>
+    <title>Robot sau Om? | Analizor Avansat</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #007aff;
-            --primary-hover: #005bb5;
-            --background-color: #f0f2f5;
+            --human-color: #28a745; /* Verde */
+            --robot-color: #007aff; /* Albastru */
+            --robot-hover: #005bb5; /* Albastru mai închis */
+            --background-color: #f4f7f6;
             --card-background: #ffffff;
-            --text-color: #333333;
+            --text-color: #333;
             --border-color: #e0e0e0;
             --shadow-light: 0 4px 8px rgba(0,0,0,0.05);
             --shadow-medium: 0 8px 16px rgba(0,0,0,0.1);
         }
-
         body {
             font-family: 'Inter', sans-serif;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
             background: var(--background-color);
             color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            padding: 2rem;
             box-sizing: border-box;
         }
 
-        .container {
+        /* --- Header --- */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            color: var(--text-color);
+        }
+        .header p {
+            font-size: 1.1rem;
+            color: #666;
+            max-width: 600px;
+        }
+
+        /* --- Container Principal (două coloane) --- */
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
             width: 100%;
-            max-width: 550px;
+            max-width: 1200px;
+            justify-content: center;
+        }
+        .upload-column, .result-column {
+            flex: 1;
+            min-width: 350px;
+            max-width: 600px;
             background: var(--card-background);
-            padding: 2.5rem;
+            padding: 2rem;
             border-radius: 16px;
             box-shadow: var(--shadow-medium);
-            text-align: center;
             border: 1px solid var(--border-color);
         }
-
-        h1 {
-            font-size: 2.2rem;
+        h2 {
+            font-size: 1.5rem;
             margin-top: 0;
-            margin-bottom: 1rem;
-            color: var(--primary-color);
-        }
-
-        p {
-            font-size: 1rem;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-            color: #666;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .file-label {
-            display: inline-flex; /* Use flex for icon and text alignment */
-            align-items: center;
-            gap: 10px; /* Space between icon and text */
-            padding: 14px 25px;
-            background: var(--primary-color);
-            color: #fff;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: background 0.2s ease, transform 0.1s ease;
             margin-bottom: 1.5rem;
-            user-select: none; /* Prevent text selection on click */
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
         }
 
-        .file-label:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-        }
-
-        .file-label:active {
-            transform: translateY(0);
-        }
-
-        .image-display {
-            margin-top: 2rem;
+        /* --- Coloana de Upload --- */
+        #drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            color: #888;
+            transition: all 0.2s ease;
+            min-height: 250px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #drop-zone.drag-over {
+            border-color: var(--robot-color);
+            background: #f4f8ff;
+        }
+        input[type="file"] { display: none; }
+        .file-label {
+            display: inline-block;
+            padding: 12px 20px;
+            background: var(--robot-color);
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .file-label:hover {
+            background: var(--robot-hover);
+        }
+
+        #upload-preview {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-top: 1rem;
+        }
+
+        /* Butonul de Resetare */
+        #reset-btn {
+            display: none; /* Ascuns inițial */
+            width: 100%;
+            padding: 12px;
+            margin-top: 1rem;
+            background: #f8f8f8;
+            color: var(--robot-color);
+            border: 1px solid var(--robot-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background 0.2s, color 0.2s;
+        }
+        #reset-btn:hover {
+            background: var(--robot-color);
+            color: white;
+        }
+
+        .url-upload {
+            margin-top: 1.5rem;
+        }
+        #url-input {
+            width: calc(100% - 22px);
+            padding: 12px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        #url-submit-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 1rem;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        #url-submit-btn:hover { background: #5a6268; }
+
+        /* --- Coloana de Rezultat --- */
+        .result-item {
+            margin-bottom: 1.5rem;
+        }
+        .result-item h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        .image-results {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .image-box {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        /* Aplicați limita de înălțime ambelor imagini */
+        .image-box img {
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .image-box p { font-size: 0.9rem; color: #777; margin: 0.5rem 0 0 0; }
+
+        #confidence-bar {
+            display: flex;
+            width: 100%;
+            height: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #eee;
+            font-weight: 600;
+            color: white;
+            line-height: 30px;
+            font-size: 0.9rem;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        }
+        #bar-human, #bar-robot {
+            height: 100%;
+            transition: width 0.5s ease-out;
+            text-align: center;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        #bar-human { background: var(--human-color); }
+        #bar-robot { background: var(--robot-color); }
+
+        .final-result-box {
+            display: flex;
             align-items: center;
             justify-content: center;
             gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
         }
-
-        #preview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 10px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-            display: none; /* Ascuns inițial */
-            object-fit: contain; /* Ensure image fits within bounds */
-        }
-
-        #timestamp {
-            font-size: 0.9rem;
-            color: #888;
-            margin-top: 0.5rem;
-            display: none; /* Ascuns inițial */
-        }
-
-        #result {
-            margin-top: 2rem;
+        #result-text {
             font-size: 1.8rem;
             font-weight: 700;
-            min-height: 40px; /* Prevents layout shift */
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            min-height: 40px;
         }
-        #result.robot { color: #d9534f; }
-        #result.human { color: #5cb85c; }
-        #result.error { color: #ff9500; }
+        #result-text.robot { color: var(--robot-color); }
+        #result-text.human { color: var(--human-color); }
+        #result-text.error { color: #ff9500; }
 
+        /* NOU: Stil pentru mesajul explicativ */
+        #confidence-explanation {
+            display: none; /* Ascuns inițial */
+            font-size: 0.95rem;
+            color: #666;
+            margin-top: 0.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        #copy-btn {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+            background: #f8f8f8;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #copy-btn:hover { background: #eee; }
+        #copy-btn:active { background: #ddd; }
+
+        /* --- Loader --- */
+        .loader-container {
+            display: none; /* Ascuns inițial, devine 'flex' */
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            flex-direction: column;
+            gap: 1rem;
+        }
         .loader {
             border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--primary-color);
+            border-top: 5px solid var(--robot-color);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 2rem auto 0 auto;
-            display: none; /* Ascuns inițial */
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
 
+        /* --- Secțiunea Istoric --- */
+        .history-container {
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 2rem;
+            background: var(--card-background);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-color);
+        }
+        #history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #history-list li {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            flex-wrap: nowrap;
+        }
+        #history-list li:last-child { border-bottom: none; }
+
+        .history-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .history-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .history-result {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .history-result.robot { color: var(--robot-color); }
+        .history-result.human { color: var(--human-color); }
+
+        .history-filename {
+            font-size: 0.85rem;
+            color: #777;
+            word-break: break-all;
+        }
+
+        .history-time {
+            color: #777;
+            font-size: 0.85rem;
+            margin-left: auto;
+            padding-left: 1rem;
+            white-space: nowrap;
+        }
+
+        /* Textarea ascunsă pentru copiere */
+        #copy-textarea {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+        }
+
         @media (max-width: 600px) {
-            .container {
-                padding: 1.5rem;
-            }
-            h1 {
-                font-size: 1.8rem;
-            }
-            .file-label {
-                font-size: 1rem;
-                padding: 12px 20px;
-            }
-            #result {
-                font-size: 1.5rem;
-            }
+            .history-time { display: none; }
+            .history-image { width: 40px; height: 40px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Robot sau Om?</h1>
-        <p>Încarcă o imagine pentru a afla dacă inteligența artificială o clasifică drept robot sau om.</p>
-
-        <label for="file-upload" class="file-label">
-            <span role="img" aria-label="robot-human">🤖🧑</span> Alege o Imagine
-        </label>
-        <input id="file-upload" type="file" accept="image/jpeg, image/png, image/webp">
-
-        <div class="image-display">
-            <img id="preview" src="" alt="Previzualizare Imagine">
-            <div id="timestamp"></div>
-        </div>
-
-        <div id="result"></div>
-        <div class="loader" id="loader"></div>
+    <div class="header">
+        <h1>Analizor Robot sau Om</h1>
+        <p>Încărcați o imagine prin Drag & Drop, buton sau URL pentru a obține o predicție, o hartă termică a deciziei (Grad-CAM) și un istoric al predicțiilor.</p>
     </div>
 
+    <div class="main-container">
+        <!-- Coloana de Upload -->
+        <div class="upload-column">
+            <h2>1. Încărcare Imagine</h2>
+
+            <div id="drop-zone">
+                <div id="drop-zone-text">
+                    <p>Trageți imaginea aici</p>
+                    <p>sau</p>
+                    <label for="file-upload" class="file-label">Alegeți un Fișier</label>
+                </div>
+                <!-- Previzualizarea imaginii încărcate -->
+                <img id="upload-preview" src="" alt="Previzualizare Încărcare" style="display:none;">
+                <button id="reset-btn">Încarcă alta imagine</button>
+                <input id="file-upload" type="file" accept="image/jpeg, image/png, image/webp">
+            </div>
+
+            <div class="url-upload">
+                <p style="text-align:center; margin-bottom: 0.5rem;">Sau lipiți un link către o imagine:</p>
+                <input type="text" id="url-input" placeholder="https://exemplu.com/imagine.jpg">
+                <button id="url-submit-btn">Încarcă de la URL</button>
+            </div>
+        </div>
+
+        <!-- Coloana de Rezultat -->
+        <div class="result-column">
+            <h2>2. Rezultate Analiză</h2>
+
+            <div class="loader-container" id="loader-box">
+                <div class="loader"></div>
+                <p>Procesare... Modelul analizează imaginea...</p>
+            </div>
+
+            <div id="results-wrapper" style="display: none;">
+
+                <div class="result-item">
+                    <h3>Predicție Finală</h3>
+                    <div class="final-result-box">
+                        <div id="result-text"></div>
+                        <button id="copy-btn" title="Copiază Rezultatul">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 1.5A1.5 1.5 0 0 1 .5 0h3A1.5 1.5 0 0 1 5 .5v1A1.5 1.5 0 0 1 3.5 3h-3A1.5 1.5 0 0 1-.5 1.5v-1zM10 .5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-1z"/>
+                            </svg>
+                            <span>Copiază</span>
+                        </button>
+                    </div>
+                    <p id="confidence-explanation"></p>
+                </div>
+
+                <div class="result-item">
+                    <h3>Distribuție Încredere</h3>
+                    <div id="confidence-bar">
+                        <div id="bar-human"></div>
+                        <div id="bar-robot"></div>
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <h3>Analiză Vizuală (Grad-CAM)</h3>
+                    <div class="image-results">
+                        <!-- Aici se afișează DOAR Heatmap-ul -->
+                        <div class="image-box" id="heatmap-box" style="display:none;">
+                            <img id="heatmap-image" src="" alt="Hartă Termică Grad-CAM">
+                            <p>De ce a decis modelul așa?</p>
+                        </div>
+                    </div>
+                    <div id="timestamp" style="font-size: 0.9rem; color: #888; margin-top: 1rem;"></div>
+                </div>
+
+            </div> <!-- Sfârșit results-wrapper -->
+        </div> <!-- Sfârșit result-column -->
+    </div> <!-- Sfârșit main-container -->
+
+    <!-- Istoric -->
+    <div class="history-container">
+        <h2>Istoric Predicții Recente</h2>
+        <ul id="history-list">
+            <li id="history-loader">Se încarcă istoricul...</li>
+        </ul>
+    </div>
+
+    <!-- Textarea ascunsă pentru copiere -->
+    <textarea id="copy-textarea"></textarea>
+
     <script>
+        // --- Referințe elemente DOM ---
+        const dropZone = document.getElementById('drop-zone');
+        const dropZoneText = document.getElementById('drop-zone-text');
+        const uploadPreview = document.getElementById('upload-preview');
+        const resetBtn = document.getElementById('reset-btn');
         const fileUpload = document.getElementById('file-upload');
-        const preview = document.getElementById('preview');
+        const urlInput = document.getElementById('url-input');
+        const urlSubmitBtn = document.getElementById('url-submit-btn');
+        const loaderBox = document.getElementById('loader-box');
+        const resultsWrapper = document.getElementById('results-wrapper');
         const timestampDiv = document.getElementById('timestamp');
-        const resultDiv = document.getElementById('result');
-        const loader = document.getElementById('loader');
+        const resultText = document.getElementById('result-text');
+        const copyBtn = document.getElementById('copy-btn');
+        const copyTextarea = document.getElementById('copy-textarea');
+        const barHuman = document.getElementById('bar-human');
+        const barRobot = document.getElementById('bar-robot');
+        const heatmapBox = document.getElementById('heatmap-box');
+        const heatmapImage = document.getElementById('heatmap-image');
+        const historyList = document.getElementById('history-list');
+        const historyLoader = document.getElementById('history-loader');
+        const confidenceExplanation = document.getElementById('confidence-explanation');
 
-        const API_URL = '/predict'; // Cale relativă pentru compatibilitate cu ngrok
+        // --- URL-uri API ---
+        const API_PREDICT_FILE = '/predict';
+        const API_PREDICT_URL = '/predict_url';
+        const API_GET_RECENT = '/get_recent';
 
-        fileUpload.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
+        let textToCopy = "";
 
-            // 1. Afișează previzualizarea imaginii
+        // --- Funcții Helper ---
+
+        function showLoader() {
+            loaderBox.style.display = 'flex';
+            resultsWrapper.style.display = 'none';
+        }
+
+        function hideLoader() {
+            loaderBox.style.display = 'none';
+            resultsWrapper.style.display = 'block';
+        }
+
+        function formatTimestamp(ts) {
+            try {
+                return new Date(ts).toLocaleString('ro-RO');
+            } catch (e) {
+                return ts;
+            }
+        }
+
+        // Funcție pentru a reseta UI-ul
+        function resetUI() {
+            // Ascunde rezultatele și loader-ul
+            loaderBox.style.display = 'none';
+            resultsWrapper.style.display = 'none';
+
+            // Ascunde previzualizarea și arată textul "Trageți..."
+            uploadPreview.src = '';
+            uploadPreview.style.display = 'none';
+            dropZoneText.style.display = 'block';
+            resetBtn.style.display = 'none';
+
+            // Resetează inputurile și le deblochează
+            urlInput.value = '';
+            urlInput.disabled = false;
+            urlSubmitBtn.disabled = false;
+            // Aici era problema: setăm valoarea la null pentru a goli fișierul selectat
+            fileUpload.value = null;
+            fileUpload.disabled = false;
+            dropZone.style.pointerEvents = 'auto';
+            dropZone.style.opacity = '1';
+
+            // Curăță datele vechi
+            heatmapImage.src = '';
+            textToCopy = '';
+            confidenceExplanation.style.display = 'none';
+        }
+
+        function showError(message) {
+            try {
+                hideLoader();
+                resultText.textContent = `Eroare: ${message}`;
+                resultText.className = 'error';
+
+                heatmapBox.style.display = 'none';
+                copyBtn.style.display = 'none';
+                barHuman.style.width = '0%';
+                barRobot.style.width = '0%';
+
+                resetBtn.style.display = 'block';
+                confidenceExplanation.style.display = 'none';
+
+            } catch (e) {
+                console.error("!!! EROARE CRITICĂ ÎN 'showError' !!!", e);
+            }
+        }
+
+        // --- MODIFICARE MAJORĂ: Funcția showResults() ---
+        function showResults(data) {
+            try {
+                if (!data || data.error) {
+                    showError(data ? data.error : "Răspuns gol de la server.");
+                    return;
+                }
+
+                hideLoader();
+                resetBtn.style.display = 'block';
+
+                const THRESHOLD = 0.75; // Prag de 75%
+                const confidence = data.confidence;
+                const clasa = data.predicted_class;
+
+                const humanConf = data.predicted_class === 'humans' ? data.confidence : (1 - data.confidence);
+                const robotConf = 1 - humanConf;
+
+                // 1. Setează BARA DE ÎNCREDERE (o afișăm mereu)
+                barHuman.style.width = `${humanConf * 100}%`;
+                barHuman.textContent = humanConf > 0.15 ? `Om ${(humanConf * 100).toFixed(1)}%` : '';
+                barRobot.style.width = `${robotConf * 100}%`;
+                barRobot.textContent = robotConf > 0.15 ? `Robot ${(robotConf * 100).toFixed(1)}%` : '';
+
+                // Ascunde elementele specifice (heatmap, explicație) înainte de a decide
+                heatmapBox.style.display = 'none';
+                confidenceExplanation.style.display = 'none';
+
+                // 2. Setează TEXTUL REZULTATULUI (bazat pe prag)
+                if (confidence < THRESHOLD) {
+                    // --- CAZUL: Modelul este confuz ---
+                    resultText.textContent = `❓ Clasificare Neclară`;
+                    resultText.className = 'error'; // Folosim clasa de eroare (portocaliu)
+                    textToCopy = `Clasificare Neclară (sub ${THRESHOLD*100}%)`;
+
+                    // Afișează explicația
+                    confidenceExplanation.textContent = "Modelul este nehotărât (încredere sub 75%). Imaginea nu pare a fi nici om, nici robot, sau conține elemente din ambele clase.";
+                    confidenceExplanation.style.display = 'block';
+
+                    // Nu afișăm harta termică
+
+                } else {
+                    // --- CAZUL: Modelul este sigur ---
+                    const confidencePercent = (confidence * 100).toFixed(1);
+                    if (clasa === 'robots') {
+                        resultText.textContent = `🤖 Robot (${confidencePercent}%)`;
+                        resultText.className = 'robot';
+                        textToCopy = `Robot (${confidencePercent}%)`;
+                    } else if (clasa === 'humans') {
+                        resultText.textContent = `🧑 Om (${confidencePercent}%)`;
+                        resultText.className = 'human';
+                        textToCopy = `Om (${confidencePercent}%)`;
+                    }
+
+                    // Afișează harta termică
+                    if (data.heatmap_image) {
+                        heatmapImage.src = data.heatmap_image;
+                        heatmapBox.style.display = 'block';
+                    }
+                }
+
+                // 3. Afișează butonul de copiere
+                copyBtn.style.display = 'inline-flex';
+
+                // 4. Afișează timestamp-ul
+                const now = new Date();
+                timestampDiv.textContent = `Analizat la: ${now.toLocaleDateString('ro-RO')} ${now.toLocaleTimeString('ro-RO')}`;
+
+                // 5. Reîncarcă istoricul
+                fetchHistory();
+                // Reactivăm UI-ul pentru o nouă încărcare
+                fileUpload.disabled = false;
+                urlInput.disabled = false;
+                urlSubmitBtn.disabled = false;
+                dropZone.style.pointerEvents = 'auto';
+                dropZone.style.opacity = '1';
+
+            } catch (e) {
+                console.error("!!! EROARE CRITICĂ ÎN 'showResults' !!!", e);
+                showError("Eroare la afișarea rezultatelor.");
+            }
+        }
+
+        // Funcție ajutătoare pentru a bloca UI-ul în timpul încărcării
+        function lockUI() {
+            showLoader();
+            urlInput.disabled = true;
+            urlSubmitBtn.disabled = true;
+            fileUpload.disabled = true;
+            dropZone.style.pointerEvents = 'none';
+            dropZone.style.opacity = '0.6';
+        }
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showError("Vă rugăm selectați un fișier imagine.");
+                return;
+            }
+
+            lockUI(); // Blochează UI-ul
+
             const reader = new FileReader();
             reader.onload = (e) => {
-                preview.src = e.target.result;
-                preview.style.display = 'block';
-                // Afișează timestamp-ul
-                const now = new Date();
-                timestampDiv.textContent = `Încărcată la: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-                timestampDiv.style.display = 'block';
+                uploadPreview.src = e.target.result;
+                uploadPreview.style.display = 'block';
+                dropZoneText.style.display = 'none';
             };
             reader.readAsDataURL(file);
 
-            // 2. Resetează starea și arată loader-ul
-            resultDiv.textContent = '';
-            resultDiv.className = '';
-            loader.style.display = 'block';
-            timestampDiv.style.display = 'none'; // Ascunde timestamp-ul cât timp se procesează
-
-            // 3. Pregătește datele pentru trimitere
             const formData = new FormData();
             formData.append('file', file);
-
-            // 4. Trimite imaginea la API-ul Flask
-            fetch(API_URL, {
+            fetch(API_PREDICT_FILE, {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
+            .then(showResults)
+            .catch(error => {
+                console.error('Fetch Error (File):', error);
+                showError('Eroare de conexiune cu serverul.');
+            });
+        }
+
+        function handleUrl() {
+            const url = urlInput.value;
+            if (!url) {
+                showError("Vă rugăm introduceți un URL.");
+                return;
+            }
+
+            lockUI(); // Blochează UI-ul
+
+            uploadPreview.src = url;
+            uploadPreview.style.display = 'block';
+            dropZoneText.style.display = 'none';
+
+            fetch(API_PREDICT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            })
+            .then(response => response.json())
             .then(data => {
-                // 5. Afișează rezultatul
-                loader.style.display = 'none';
-                timestampDiv.style.display = 'block'; // Reafișează timestamp-ul
-
-                if (data.error) {
-                    resultDiv.textContent = `Eroare: ${data.error}`;
-                    resultDiv.className = 'error';
-                } else {
-                    const clasa = data.predicted_class;
-                    const confidence = (data.confidence * 100).toFixed(1);
-
-                    if (clasa === 'robots') {
-                        resultDiv.textContent = `🤖 Robot (${confidence}%)`;
-                        resultDiv.className = 'robot';
-                    } else if (clasa === 'humans') {
-                        resultDiv.textContent = `🧑 Om (${confidence}%)`;
-                        resultDiv.className = 'human';
-                    }
-                }
+                showResults(data);
             })
             .catch(error => {
-                // 6. Gestionează erorile (ex: serverul nu e pornit)
-                loader.style.display = 'none';
-                timestampDiv.style.display = 'none'; // Ascunde timestamp-ul la eroare
-                resultDiv.textContent = 'Eroare de conexiune cu serverul.';
-                resultDiv.className = 'error';
-                console.error('Fetch Error:', error);
+                console.error('Fetch Error (URL):', error);
+                showError('Eroare la procesarea URL-ului.');
             });
-        });
-    </script>
+        }
 
+        function fetchHistory() {
+            fetch(API_GET_RECENT)
+                .then(response => response.json())
+                .then(data => {
+                    historyLoader.style.display = 'none';
+                    historyList.innerHTML = '';
+
+                    if (data.error) {
+                        historyList.innerHTML = '<li>Eroare la încărcarea istoricului.</li>';
+                        return;
+                    }
+                    if (data.length === 0) {
+                        historyList.innerHTML = '<li>Nicio predicție recentă.</li>';
+                        return;
+                    }
+
+                    data.forEach(item => {
+                        if (item.image_url) {
+                            const li = document.createElement('li');
+                            const isRobot = item.predicted_class === 'robots';
+                            const confidence = (item.confidence * 100).toFixed(1);
+
+                            li.innerHTML = `
+                                <img class="history-image" src="${item.image_url}" alt="${item.filename}" loading="lazy">
+                                <div class="history-details">
+                                    <span class="history-result ${isRobot ? 'robot' : 'human'}">
+                                        ${isRobot ? '🤖' : '🧑'} ${isRobot ? 'Robot' : 'Om'} (${confidence}%)
+                                    </span>
+                                    <span class="history-filename">${item.filename}</span>
+                                </div>
+                                <span class="history-time">${formatTimestamp(item.timestamp)}</span>
+                            `;
+                            historyList.appendChild(li);
+                        }
+                    });
+                })
+                .catch(error => {
+                    historyLoader.style.display = 'none';
+                    historyList.innerHTML = '<li>Eroare de conexiune la istoric.</li>';
+                });
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', fetchHistory);
+        fileUpload.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        urlSubmitBtn.addEventListener('click', handleUrl);
+        resetBtn.addEventListener('click', resetUI);
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            handleFile(file);
+        });
+        copyBtn.addEventListener('click', () => {
+            copyTextarea.value = textToCopy;
+            copyTextarea.style.display = 'block';
+            copyTextarea.select();
+            try {
+                document.execCommand('copy');
+                copyBtn.title = 'Copiat!';
+                setTimeout(() => { copyBtn.title = 'Copiază Rezultatul'; }, 1500);
+            } catch (err) {
+                console.error('Nu s-a putut copia', err);
+            }
+            copyTextarea.style.display = 'none';
+        });
+
+    </script>
 </body>
 </html>
